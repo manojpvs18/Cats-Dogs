@@ -23,7 +23,7 @@ def main(args):
     for cls_dir in data_dir.iterdir():
         if cls_dir.is_dir():
             for f in cls_dir.glob("*"):
-                files.append((f, cls_dir.name))
+                files.append((f, cls_dir.name.lower()))
 
     random.seed(0)
     random.shuffle(files)

@@ -4,6 +4,7 @@
 set -euo pipefail
 
 BASE_URL="${1:-http://localhost:8000}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 echo "== Smoke test: health check =="
 health_status=$(curl -sf -o /tmp/health.json -w "%{http_code}" "${BASE_URL}/health")
@@ -15,7 +16,7 @@ cat /tmp/health.json
 echo
 
 echo "== Smoke test: prediction call =="
-python3 - <<'EOF'
+"$PYTHON_BIN" - <<EOF
 from PIL import Image
 img = Image.new("RGB", (224, 224), color=(100, 150, 200))
 img.save("/tmp/smoke_test.jpg")
