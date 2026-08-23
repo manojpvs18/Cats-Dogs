@@ -1,0 +1,62 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/cats-dogs-api
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: cats-dogs-cluster
+
+      - name: Create image pull secret for GHCR
+        run: |
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=${{ env.REGISTRY }} \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Substitute image tag into manifests
+        run: |
+          sed -i "s|IMAGE_PLACEHOLDER|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.workflow_run.head_sha }}|g" k8s/deployment.yaml
+
+      - name: Apply manifests
+        run: |
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          kubectl rollout status deployment/cats-dogs-api --timeout=120s
+
+      - name: Port-forward service
+        run: |
+          kubectl port-forward svc/cats-dogs-api-service 8000:80 &
+          sleep 5
+
+      - name: Run smoke tests
+        run: |
+          chmod +x scripts/smoke_test.sh
+          ./scripts/smoke_test.sh http://localhost:8000
+
+      - name: Fail pipeline on smoke test failure
+        if: failure()
+        run: |
+          echo "Smoke tests failed — rolling deployment back."
+          kubectl rollout undo deployment/cats-dogs-api || true
+          exit 1

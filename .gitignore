@@ -1,0 +1,23 @@
+# data (tracked by DVC instead)
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/*.dvc
+data/processed/*
+!data/processed/.gitkeep
+
+# model artifacts (tracked by DVC/MLflow, not git)
+artifacts/
+mlruns/
+mlflow.db
+
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+venv/
+
+# misc
+.DS_Store
+requests_log.jsonl

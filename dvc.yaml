@@ -1,0 +1,24 @@
+stages:
+  preprocess:
+    cmd: python -m src.data.preprocess --input data/raw/cats_and_dogs --output data/processed
+    deps:
+      - src/data/preprocess.py
+      - data/raw/cats_and_dogs
+    outs:
+      - data/processed/train
+      - data/processed/val
+      - data/processed/test
+
+  train:
+    cmd: python -m src.models.train --data data/processed --epochs 10
+    deps:
+      - src/models/train.py
+      - src/models/model.py
+      - data/processed/train
+      - data/processed/val
+      - data/processed/test
+    outs:
+      - artifacts/model.pt
+    metrics:
+      - artifacts/metrics.json:
+          cache: false
