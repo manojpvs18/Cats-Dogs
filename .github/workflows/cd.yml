@@ -16,10 +16,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: read
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
 
       - name: Create kind cluster
         uses: helm/kind-action@v1
@@ -27,27 +30,36 @@ jobs:
           cluster_name: cats-dogs-cluster
 
       - name: Create image pull secret for GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           kubectl create secret docker-registry ghcr-secret \
             --docker-server=${{ env.REGISTRY }} \
             --docker-username=${{ github.actor }} \
-            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --docker-password="${GHCR_TOKEN}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Substitute image tag into manifests
         run: |
           sed -i "s|IMAGE_PLACEHOLDER|${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.workflow_run.head_sha }}|g" k8s/deployment.yaml
+          cat k8s/deployment.yaml
 
       - name: Apply manifests
         run: |
           kubectl apply -f k8s/deployment.yaml
           kubectl apply -f k8s/service.yaml
-          kubectl rollout status deployment/cats-dogs-api --timeout=120s
+          kubectl rollout status deployment/cats-dogs-api --timeout=180s
 
       - name: Port-forward service
         run: |
-          kubectl port-forward svc/cats-dogs-api-service 8000:80 &
-          sleep 5
+          kubectl port-forward svc/cats-dogs-api-service 8000:80 >/tmp/cats-dogs-portforward.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://localhost:8000/health >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS http://localhost:8000/health
 
       - name: Run smoke tests
         run: |
