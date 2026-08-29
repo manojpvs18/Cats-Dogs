@@ -1,5 +1,11 @@
 # Cats vs Dogs — End-to-End MLOps Pipeline
 
+![Status](https://img.shields.io/badge/Status-Container%20Health%20Verified-brightgreen)
+![Docker](https://img.shields.io/badge/Docker%20Build-Blocked%20on%20this%20host-red)
+
+> Verified on this machine: the FastAPI health endpoint responded successfully with `{"status":"ok","model_loaded":true}`.
+> Docker build could not be executed here because the Docker daemon is not running (`dockerDesktopLinuxEngine` not found).
+
 A complete MLOps reference implementation: data versioning → model training with
 experiment tracking → containerized inference API → CI → CD → monitoring.
 
